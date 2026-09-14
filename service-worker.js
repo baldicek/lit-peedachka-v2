@@ -1,4 +1,4 @@
-const SHELL_CACHE = "ptc-shell-v3";
+const SHELL_CACHE = "ptc-shell-v4";
 const TILE_CACHE = "ptc-tiles-v1";
 
 const SHELL_FILES = [
@@ -64,21 +64,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // App shell files: cache-first (works fully offline), network fallback for updates.
+  // App shell files: network-first, so updates (like this one) show up
+  // immediately when you're online. Falls back to the cached copy only
+  // when there's no connection, so the app still works fully offline.
   if (url.origin === self.location.origin) {
     event.respondWith(
-      caches.match(event.request).then((cached) => {
-        return (
-          cached ||
-          fetch(event.request).then((response) => {
-            if (response && response.status === 200) {
-              const copy = response.clone();
-              caches.open(SHELL_CACHE).then((cache) => cache.put(event.request, copy));
-            }
-            return response;
-          })
-        );
-      })
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(SHELL_CACHE).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
     );
   }
 });
